@@ -1,0 +1,15 @@
+torch==1.12.1
+torchvision==0.13.1
+transformers==4.21.0
+datasets==2.4.0
+fastapi==0.79.0
+uvicorn==0.18.2
+pydantic==1.9.1
+mlflow==1.27.0
+pytest==7.1.2
+pyyaml==6.0
+numpy==1.23.1
+matplotlib==3.5.2
+tqdm==4.64.0
+Pillow==9.2.0
+scikit-learn==1.1.1
