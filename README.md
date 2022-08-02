@@ -97,6 +97,30 @@ uvicorn src.api.main:app --reload
 | uncertainty  | log-sigma per task   | Kendall, Gal, Cipolla (2018)                |
 | gradnorm     | one weight per task  | Chen et al (2018), balances grad magnitudes |
 
+## Design notes
+
+The shared backbone is wrapped in an `MTLModel` that holds a `nn.ModuleDict` of
+heads keyed by task name. Forward returns a dict `{task_name: head_output}` so
+the trainer can compute per-task losses without bespoke routing.
+
+`Trainer` accepts a `LossWeighter` strategy. At each step it:
+1. computes raw losses `{task: scalar}`,
+2. asks the weighter for a combined scalar loss (and possibly side-effects like
+   updating GradNorm weights),
+3. backprops once through the shared trunk.
+
+GradNorm needs the gradient norm of each task loss w.r.t. the *last* layer of
+the shared backbone. The implementation hooks into `model.backbone.last_layer`
+to grab those.
+
+## References
+
+- Kendall, Gal, Cipolla. *Multi-Task Learning Using Uncertainty to Weigh Losses
+  for Scene Geometry and Semantics*. CVPR 2018.
+- Chen, Badrinarayanan, Lee, Rabinovich. *GradNorm: Gradient Normalization for
+  Adaptive Loss Balancing in Deep Multitask Networks*. ICML 2018.
+- Caruana. *Multitask Learning*. Machine Learning 1997.
+
 ## License
 
 MIT.
