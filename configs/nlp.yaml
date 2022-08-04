@@ -1,0 +1,46 @@
+experiment:
+  name: bert-mtl-nlp
+  seed: 42
+  output_dir: runs/nlp
+
+backbone:
+  type: bert
+  pretrained: bert-base-uncased
+  freeze_until_epoch: 1
+  pooler_dim: 768
+
+tasks:
+  - name: sentiment
+    head: classifier
+    num_classes: 2
+    loss: ce
+    weight_init: 1.0
+  - name: topic
+    head: classifier
+    num_classes: 4
+    loss: ce
+    weight_init: 1.0
+  - name: ner
+    head: token_classifier
+    num_classes: 9
+    loss: ce_ignore_pad
+    weight_init: 1.0
+
+data:
+  max_seq_len: 128
+  batch_size: 16
+  num_workers: 2
+
+train:
+  epochs: 3
+  lr: 2.0e-5
+  warmup_steps: 100
+  weight_decay: 0.01
+  grad_accum: 1
+  log_every: 50
+
+loss_weighting:
+  strategy: uncertainty   # one of: uniform | uncertainty | gradnorm
+  gradnorm:
+    alpha: 1.5
+    update_every: 1
