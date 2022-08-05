@@ -32,3 +32,35 @@ class UniformWeighter(BaseWeighter):
     def combine(self, losses: Dict[str, torch.Tensor]) -> torch.Tensor:
         vals = [losses[n] for n in self.task_names]
         return torch.stack(vals).mean()
+
+
+class UncertaintyWeighter(BaseWeighter):
+    """Learnable homoscedastic uncertainty weighting.
+
+    For each task we keep a learnable `log_sigma`. The combined loss is
+        sum_i ( exp(-log_sigma_i) * loss_i + log_sigma_i )
+
+    which is the negative log likelihood of independent Gaussians (regression)
+    or the relaxed multi-class form for classification (Kendall et al 2018).
+    Adding `log_sigma_i` keeps the optimizer from collapsing weights to zero.
+    """
+
+    def __init__(self, task_names: List[str], init_log_sigma: float = 0.0):
+        super().__init__(task_names)
+        self.log_sigma = nn.Parameter(
+            torch.full((len(task_names),), float(init_log_sigma))
+        )
+
+    def combine(self, losses: Dict[str, torch.Tensor]) -> torch.Tensor:
+        total = 0.0
+        for i, name in enumerate(self.task_names):
+            ls = self.log_sigma[i]
+            total = total + torch.exp(-ls) * losses[name] + ls
+        return total
+
+    def get_weights(self) -> Dict[str, float]:
+        with torch.no_grad():
+            return {
+                n: float(torch.exp(-self.log_sigma[i]).item())
+                for i, n in enumerate(self.task_names)
+            }
