@@ -95,3 +95,37 @@ class GradNormWeighter(BaseWeighter):
         with torch.no_grad():
             return {n: float(self.weights[i].item())
                     for i, n in enumerate(self.task_names)}
+
+    def update(
+        self,
+        losses: Dict[str, torch.Tensor],
+        initial_losses: Dict[str, float],
+        shared_param: torch.Tensor,
+    ) -> torch.Tensor:
+        """One GradNorm update step. Returns the gradnorm-loss scalar.
+
+        Caller is responsible for zeroing `self.weights.grad` (or using its
+        own optimizer for these weights) and stepping after this returns.
+        """
+        # Per-task gradient norm: ||grad_W( w_i * L_i )||_2
+        grad_norms = []
+        for i, n in enumerate(self.task_names):
+            gi = torch.autograd.grad(
+                self.weights[i] * losses[n],
+                shared_param,
+                retain_graph=True,
+                create_graph=True,
+            )[0]
+            grad_norms.append(torch.norm(gi))
+        grad_norms = torch.stack(grad_norms)
+
+        # Loss ratios L_i(t) / L_i(0)
+        loss_ratios = torch.stack([
+            losses[n].detach() / max(initial_losses[n], 1e-8)
+            for n in self.task_names
+        ])
+        rel_rate = loss_ratios / loss_ratios.mean()
+
+        target = grad_norms.detach().mean() * (rel_rate ** self.alpha)
+        gradnorm_loss = torch.abs(grad_norms - target).sum()
+        return gradnorm_loss
