@@ -64,3 +64,34 @@ class UncertaintyWeighter(BaseWeighter):
                 n: float(torch.exp(-self.log_sigma[i]).item())
                 for i, n in enumerate(self.task_names)
             }
+
+
+class GradNormWeighter(BaseWeighter):
+    """GradNorm (Chen et al 2018).
+
+    Keeps a learnable weight w_i per task and adjusts them so the L2 grad norms
+    of `w_i * L_i` against a shared parameter tensor stay close to a target
+    that depends on each task's relative training rate.
+
+    Note: this implementation expects the trainer to call
+        `update(losses, initial_losses, shared_param)`
+    AFTER the main weighted loss has done its backward, but BEFORE the
+    optimizer step.
+    """
+
+    def __init__(self, task_names: List[str], alpha: float = 1.5):
+        super().__init__(task_names)
+        # Initialise all task weights to 1.
+        self.weights = nn.Parameter(torch.ones(len(task_names)))
+        self.alpha = alpha
+
+    def combine(self, losses: Dict[str, torch.Tensor]) -> torch.Tensor:
+        total = 0.0
+        for i, n in enumerate(self.task_names):
+            total = total + self.weights[i] * losses[n]
+        return total
+
+    def get_weights(self) -> Dict[str, float]:
+        with torch.no_grad():
+            return {n: float(self.weights[i].item())
+                    for i, n in enumerate(self.task_names)}
