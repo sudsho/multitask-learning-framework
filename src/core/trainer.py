@@ -87,12 +87,15 @@ class MTLTrainer:
 
         self.optimizer.step()
 
-        return {
+        out = {
             "total": float(total.detach().item()),
             **{n: float(v.detach().item()) for n, v in losses.items()},
-            **{f"w/{k}": v for k, v in self.weighter.__dict__.get("weights", {}).items()
-               if not isinstance(v, torch.Tensor)},
         }
+        # Pull current weights from the weighter if it exposes them.
+        if hasattr(self.weighter, "get_weights"):
+            for k, v in self.weighter.get_weights().items():
+                out[f"w/{k}"] = v
+        return out
 
     def fit(self, dataloader: Iterable, epochs: int = 1, log_every: int = 50):
         history = []
