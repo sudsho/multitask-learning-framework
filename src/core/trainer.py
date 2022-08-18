@@ -1,4 +1,4 @@
-"""Multi-task trainer.
+"""Multi-task trainer with optional mlflow logging.
 
 Loop:
   for batch in dataloader:
@@ -29,11 +29,13 @@ class MTLTrainer:
         weighter: BaseWeighter,
         optimizer: torch.optim.Optimizer,
         device: str = "cpu",
+        mlflow_logger=None,
     ):
         self.model = model.to(device)
         self.weighter = weighter.to(device)
         self.optimizer = optimizer
         self.device = device
+        self.mlflow_logger = mlflow_logger
         self._initial_losses: Optional[Dict[str, float]] = None
         # GradNorm needs an optimizer for the task-weight params alone.
         self._gn_optim: Optional[torch.optim.Optimizer] = None
@@ -107,6 +109,29 @@ class MTLTrainer:
                     msg = " ".join(f"{k}={v:.4f}" for k, v in metrics.items()
                                    if isinstance(v, float))
                     print(f"[epoch {epoch} step {step}] {msg}")
+                if self.mlflow_logger is not None:
+                    self.mlflow_logger.log(metrics, step=step)
                 history.append({"step": step, "epoch": epoch, **metrics})
                 step += 1
         return history
+
+
+class MLflowLogger:
+    """Thin wrapper so the trainer doesn't import mlflow at module level."""
+
+    def __init__(self, run_name: str, tracking_uri: Optional[str] = None):
+        import mlflow
+
+        self.mlflow = mlflow
+        if tracking_uri:
+            mlflow.set_tracking_uri(tracking_uri)
+        self.run = mlflow.start_run(run_name=run_name)
+
+    def log(self, metrics: Dict[str, float], step: int) -> None:
+        self.mlflow.log_metrics(
+            {k: v for k, v in metrics.items() if isinstance(v, float)},
+            step=step,
+        )
+
+    def close(self) -> None:
+        self.mlflow.end_run()
