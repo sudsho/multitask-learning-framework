@@ -99,10 +99,24 @@ class MTLTrainer:
                 out[f"w/{k}"] = v
         return out
 
-    def fit(self, dataloader: Iterable, epochs: int = 1, log_every: int = 50):
+    def fit(
+        self,
+        dataloader: Iterable,
+        epochs: int = 1,
+        log_every: int = 50,
+        freeze_until_epoch: int = 0,
+    ):
         history = []
         step = 0
         for epoch in range(epochs):
+            # shared backbone freeze schedule:
+            # freeze for the first `freeze_until_epoch` epochs, then unfreeze.
+            if hasattr(self.model.backbone, "freeze"):
+                if epoch < freeze_until_epoch:
+                    self.model.backbone.freeze(True)
+                else:
+                    self.model.backbone.freeze(False)
+
             for batch in dataloader:
                 metrics = self.train_step(batch)
                 if step % log_every == 0:
