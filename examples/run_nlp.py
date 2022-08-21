@@ -111,6 +111,7 @@ def main():
         loader,
         epochs=cfg["train"]["epochs"],
         log_every=cfg["train"]["log_every"],
+        freeze_until_epoch=cfg["backbone"].get("freeze_until_epoch", 0),
     )
 
     out_dir = cfg["experiment"]["output_dir"]
