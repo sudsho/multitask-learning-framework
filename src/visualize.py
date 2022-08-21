@@ -57,3 +57,24 @@ def plot_total_loss(history, path: str) -> None:
     fig.tight_layout()
     fig.savefig(path, dpi=120)
     plt.close(fig)
+
+
+def plot_gradnorm_panel(history, task_names, path: str) -> None:
+    """Three-panel summary: loss, weights, total. Useful when running gradnorm."""
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+    for n in task_names:
+        axes[0].plot(_series(history, n), label=n)
+        ys = _series(history, f"w/{n}")
+        if ys:
+            axes[1].plot(ys, label=n)
+    axes[0].set_title("per-task loss")
+    axes[0].legend()
+    axes[1].set_title("task weights")
+    axes[1].legend()
+    axes[2].plot(_series(history, "total"), color="black")
+    axes[2].set_title("combined")
+    for ax in axes:
+        ax.set_xlabel("step")
+    fig.tight_layout()
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
