@@ -73,13 +73,16 @@ class MTLTrainer:
         total = self.weighter.combine(losses)
 
         if isinstance(self.weighter, GradNormWeighter):
-            # First main backward (retain so we can compute gradnorm grads).
-            total.backward(retain_graph=True)
             shared_param = self.model.backbone.last_layer.weight
+            # Compute gradnorm update FIRST while the graph is still around.
+            # `update` itself calls torch.autograd.grad(retain_graph, create_graph)
+            # so we don't need to do the main backward before it.
             self._gn_optim.zero_grad()
             gn_loss = self.weighter.update(losses, self._initial_losses, shared_param)
-            gn_loss.backward()
+            gn_loss.backward(retain_graph=True)
             self._gn_optim.step()
+            # Now do the main backward through the combined loss.
+            total.backward()
             # Renormalise the task weights so they sum to N (per the paper).
             with torch.no_grad():
                 w = self.weighter.weights
