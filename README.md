@@ -69,6 +69,14 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Or use docker:
+
+```bash
+docker compose up --build
+# api on http://localhost:8000
+# mlflow on http://localhost:5000
+```
+
 ## Run
 
 NLP demo (BERT shared, 3 heads):
@@ -96,6 +104,20 @@ uvicorn src.api.main:app --reload
 | uniform      | none                 | sum of losses, scaled by 1/N                |
 | uncertainty  | log-sigma per task   | Kendall, Gal, Cipolla (2018)                |
 | gradnorm     | one weight per task  | Chen et al (2018), balances grad magnitudes |
+
+To switch weighters change `loss_weighting.strategy` in the YAML config.
+
+## Tests
+
+```bash
+make test
+```
+
+The test suite covers:
+- `test_mtl_model.py`: forward shapes, head dict structure
+- `test_loss_weighting.py`: each strategy returns scalars, gradnorm grads flow
+- `test_trainer.py`: single train step under all three strategies
+- `test_api.py`: FastAPI endpoint contracts
 
 ## Design notes
 
