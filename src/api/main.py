@@ -6,10 +6,11 @@ vars are not set, we fall back to dummy outputs so the endpoint shape is
 testable without a trained model.
 """
 
-import base64
-import io
+import logging
 import os
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger("mtl.api")
 
 import torch
 from fastapi import FastAPI, HTTPException
@@ -56,8 +57,13 @@ def _load_nlp():
         return _nlp_model["obj"]
     ckpt = os.environ.get("MTL_NLP_CKPT")
     if not ckpt or not os.path.exists(ckpt):
-        return None  # dummy mode
-    state = torch.load(ckpt, map_location="cpu")
+        logger.warning("MTL_NLP_CKPT not set or missing; serving dummy outputs")
+        return None
+    try:
+        state = torch.load(ckpt, map_location="cpu")
+    except Exception as e:   # noqa: BLE001
+        logger.error("failed to load nlp ckpt %s: %s", ckpt, e)
+        return None
     _nlp_model["obj"] = state
     return state
 
@@ -67,8 +73,13 @@ def _load_vision():
         return _vision_model["obj"]
     ckpt = os.environ.get("MTL_VISION_CKPT")
     if not ckpt or not os.path.exists(ckpt):
+        logger.warning("MTL_VISION_CKPT not set or missing; serving dummy outputs")
         return None
-    state = torch.load(ckpt, map_location="cpu")
+    try:
+        state = torch.load(ckpt, map_location="cpu")
+    except Exception as e:   # noqa: BLE001
+        logger.error("failed to load vision ckpt %s: %s", ckpt, e)
+        return None
     _vision_model["obj"] = state
     return state
 
