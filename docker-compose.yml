@@ -7,21 +7,4 @@ services:
     container_name: mtl-api
     ports:
       - "8000:8000"
-    environment:
-      - MTL_NLP_CKPT=/app/runs/nlp/best.pt
-      - MTL_VISION_CKPT=/app/runs/vision/best.pt
-    volumes:
-      - ./runs:/app/runs:ro
     restart: unless-stopped
-
-  mlflow:
-    image: ghcr.io/mlflow/mlflow:v1.27.0
-    container_name: mtl-mlflow
-    ports:
-      - "5000:5000"
-    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow.db --default-artifact-root /mlruns
-    volumes:
-      - mlflow_data:/mlruns
-
-volumes:
-  mlflow_data:

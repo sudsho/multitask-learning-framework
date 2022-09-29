@@ -18,7 +18,6 @@ from transformers import BertTokenizerFast
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.core.loss_weighting import (
-    GradNormWeighter,
     UncertaintyWeighter,
     UniformWeighter,
 )
@@ -38,13 +37,11 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
-def build_weighter(strategy: str, task_names, alpha: float = 1.5):
+def build_weighter(strategy: str, task_names):
     if strategy == "uniform":
         return UniformWeighter(task_names)
     if strategy == "uncertainty":
         return UncertaintyWeighter(task_names)
-    if strategy == "gradnorm":
-        return GradNormWeighter(task_names, alpha=alpha)
     raise ValueError(f"unknown strategy {strategy}")
 
 
@@ -97,7 +94,6 @@ def main():
     weighter = build_weighter(
         cfg["loss_weighting"]["strategy"],
         [t.name for t in tasks],
-        alpha=cfg["loss_weighting"].get("gradnorm", {}).get("alpha", 1.5),
     )
 
     optim = torch.optim.AdamW(

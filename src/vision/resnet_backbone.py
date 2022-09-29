@@ -28,11 +28,6 @@ class ResNetBackbone(nn.Module):
         self.layer3 = net.layer3
         self.layer4 = net.layer4
 
-    @property
-    def last_layer(self) -> nn.Module:
-        # Used by GradNorm. Picks the last conv before classification.
-        return self.layer4[-1].conv3 if hasattr(self.layer4[-1], "conv3") else self.layer4[-1].conv2
-
     def freeze(self, freeze: bool = True) -> None:
         for p in self.parameters():
             p.requires_grad = not freeze

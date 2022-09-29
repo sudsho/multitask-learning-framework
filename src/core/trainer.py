@@ -7,9 +7,6 @@ Loop:
                 for t in model.tasks}                 # dict[task_name -> scalar]
       total = weighter.combine(losses)               # scalar
       total.backward()
-      if isinstance(weighter, GradNormWeighter):
-          # extra step: update task weights
-          ...
       optimizer.step()
 """
 
@@ -18,7 +15,7 @@ from typing import Any, Dict, Iterable, Optional
 import torch
 import torch.nn as nn
 
-from .loss_weighting import BaseWeighter, GradNormWeighter
+from .loss_weighting import BaseWeighter
 from .mtl_model import MTLModel
 
 
@@ -36,11 +33,6 @@ class MTLTrainer:
         self.optimizer = optimizer
         self.device = device
         self.mlflow_logger = mlflow_logger
-        self._initial_losses: Optional[Dict[str, float]] = None
-        # GradNorm needs an optimizer for the task-weight params alone.
-        self._gn_optim: Optional[torch.optim.Optimizer] = None
-        if isinstance(weighter, GradNormWeighter):
-            self._gn_optim = torch.optim.Adam([weighter.weights], lr=2e-4)
 
     def _move(self, obj):
         if isinstance(obj, torch.Tensor):
@@ -65,31 +57,8 @@ class MTLTrainer:
         self.optimizer.zero_grad()
 
         losses = self._per_task_losses(batch)
-
-        if self._initial_losses is None:
-            self._initial_losses = {n: float(v.detach().item())
-                                    for n, v in losses.items()}
-
         total = self.weighter.combine(losses)
-
-        if isinstance(self.weighter, GradNormWeighter):
-            shared_param = self.model.backbone.last_layer.weight
-            # Compute gradnorm update FIRST while the graph is still around.
-            # `update` itself calls torch.autograd.grad(retain_graph, create_graph)
-            # so we don't need to do the main backward before it.
-            self._gn_optim.zero_grad()
-            gn_loss = self.weighter.update(losses, self._initial_losses, shared_param)
-            gn_loss.backward(retain_graph=True)
-            self._gn_optim.step()
-            # Now do the main backward through the combined loss.
-            total.backward()
-            # Renormalise the task weights so they sum to N (per the paper).
-            with torch.no_grad():
-                w = self.weighter.weights
-                w.data = w.data * (len(w) / w.data.sum().clamp_min(1e-8))
-        else:
-            total.backward()
-
+        total.backward()
         self.optimizer.step()
 
         out = {

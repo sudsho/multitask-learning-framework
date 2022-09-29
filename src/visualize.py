@@ -59,8 +59,8 @@ def plot_total_loss(history, path: str) -> None:
     plt.close(fig)
 
 
-def plot_gradnorm_panel(history, task_names, path: str) -> None:
-    """Three-panel summary: loss, weights, total. Useful when running gradnorm."""
+def plot_training_panel(history, task_names, path: str) -> None:
+    """Three-panel summary: per-task loss, task weights, combined loss."""
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
     for n in task_names:
         axes[0].plot(_series(history, n), label=n)

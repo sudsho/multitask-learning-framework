@@ -7,22 +7,8 @@ backbone:
   type: resnet50
   pretrained: true
   freeze_until_epoch: 0
-  feature_dim: 2048
-
-tasks:
-  - name: classification
-    head: avgpool_classifier
-    num_classes: 20      # pascal voc 20 classes
-    loss: ce
-    weight_init: 1.0
-  - name: segmentation
-    head: fcn_decoder
-    num_classes: 21      # 20 fg + bg
-    loss: ce_ignore_255
-    weight_init: 1.0
 
 data:
-  dataset: voc2012_subset
   image_size: 224
   batch_size: 8
   num_workers: 4
@@ -35,7 +21,4 @@ train:
   log_every: 25
 
 loss_weighting:
-  strategy: gradnorm
-  gradnorm:
-    alpha: 1.5
-    update_every: 1
+  strategy: uncertainty   # one of: uniform | uncertainty

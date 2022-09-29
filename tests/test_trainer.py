@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 
 from src.core.loss_weighting import (
-    GradNormWeighter,
     UncertaintyWeighter,
     UniformWeighter,
 )
@@ -57,12 +56,6 @@ def test_single_step_uniform():
 
 def test_single_step_uncertainty():
     trainer = _build(UncertaintyWeighter)
-    metrics = trainer.train_step(_batch())
-    assert "w/a" in metrics and "w/b" in metrics
-
-
-def test_single_step_gradnorm():
-    trainer = _build(GradNormWeighter)
     metrics = trainer.train_step(_batch())
     assert "w/a" in metrics and "w/b" in metrics
 

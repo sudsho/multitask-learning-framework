@@ -25,12 +25,6 @@ class BertBackbone(nn.Module):
         self.bert = BertModel.from_pretrained(pretrained)
         self.hidden_size = self.bert.config.hidden_size
 
-    @property
-    def last_layer(self) -> nn.Module:
-        # The last transformer block's output projection. Used by GradNorm to
-        # compute task gradient norms against a shared parameter tensor.
-        return self.bert.encoder.layer[-1].output.dense
-
     def freeze(self, freeze: bool = True) -> None:
         for p in self.bert.parameters():
             p.requires_grad = not freeze
