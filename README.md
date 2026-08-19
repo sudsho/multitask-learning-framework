@@ -70,9 +70,65 @@ notebooks/
 examples/
   run_nlp.py
   run_vision.py
+scripts/
+  smoke.py              tiny-CPU offline smoke (no GPU, no download)
 ci/
   test.yml.example      copy to .github/workflows/test.yml when ready
 ```
+
+## Quick start (tiny-CPU smoke, no GPU/download)
+
+The two headline demos below (`examples/run_nlp.py`, `examples/run_vision.py`)
+need a GPU, pretrained BERT / ResNet weights, and real datasets. To verify the
+core multi-task machinery on a laptop with no GPU and nothing to download, run
+the smoke instead. It builds a tiny from-scratch shared MLP encoder with three
+heads (a multi-class classifier, a scalar regressor, and a binary classifier),
+generates tiny synthetic multi-task data whose targets are learnable functions
+of one shared input, trains a few steps through the real `MTLTrainer` with the
+real learnable-uncertainty task weighter, and runs inference:
+
+```bash
+make smoke
+# or: python scripts/smoke.py
+```
+
+Real output (CPU, torch 2.5.1, a couple of seconds):
+
+```
+Multi-task learning framework: tiny-CPU offline smoke
+device=cpu (pinned) torch=2.5.1+cu121 cuda_available=True (ignored)
+shared TinyEncoder trunk + 3 heads (category=classification, value=regression, positive=binary)
+
+model parameters: 1831 (tiny; runs in well under a second on CPU)
+
+epoch  0 | weighted_total=15.0133 | category(CE)=1.3838 value(MSE)=13.3571 positive(CE)=0.6835 | weights c=0.96 v=0.96 p=1.05
+epoch  3 | weighted_total=2.6902 | category(CE)=1.2334 value(MSE)=0.9496 positive(CE)=0.5891 | weights c=0.81 v=0.82 p=1.32
+epoch  7 | weighted_total=0.9818 | category(CE)=0.9081 value(MSE)=0.1156 positive(CE)=0.2093 | weights c=0.90 v=0.83 p=1.88
+epoch 11 | weighted_total=-0.5717 | category(CE)=0.3467 value(MSE)=0.0661 positive(CE)=0.0493 | weights c=1.36 v=0.88 p=2.98
+
+per-task loss change (first epoch -> last epoch):
+  category : 1.3838 -> 0.3467
+  value    : 13.3571 -> 0.0661
+  positive : 0.6835 -> 0.0493
+  weighted total: 15.0133 -> -0.5717
+
+inference on 5 fresh examples -> per-task output shapes:
+  category  (logits) : (5, 4)  expected (5, 4)
+  value     (scalar) : (5,)  expected (5,)
+  positive  (logits) : (5, 2)  expected (5, 2)
+
+SMOKE PASS
+```
+
+Every per-task loss drops and the weighted total falls (it goes negative because
+the uncertainty weighter adds a `log_sigma` regularizer per task, which turns
+negative once the raw losses are small; that is expected, not a bug). The task
+weights shift as training proceeds, which is the whole point of the weighter.
+
+**The headline NLP / CV demos need a GPU, pretrained weights, and real data.**
+This smoke uses a tiny from-scratch trunk, tiny synthetic data, and CPU only, so
+it does not download BERT / ResNet or touch the network. It exercises the same
+`MTLModel`, `MTLTrainer`, and `UncertaintyWeighter` the real demos use.
 
 ## Setup
 
@@ -89,6 +145,9 @@ docker compose up --build
 ```
 
 ## Run
+
+These two demos need a GPU, pretrained BERT / ResNet weights, and a download on
+first run. For a no-GPU, no-download check use `make smoke` (see Quick start).
 
 NLP demo (BERT shared, 3 heads):
 

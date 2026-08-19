@@ -1,10 +1,13 @@
-.PHONY: install test lint serve nlp vision clean
+.PHONY: install test lint serve nlp vision smoke clean
 
 install:
 	pip install -r requirements.txt
 
 test:
 	pytest -q
+
+smoke:
+	python scripts/smoke.py
 
 serve:
 	uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
